@@ -2,6 +2,8 @@
    primitives. *)
 
 module Binomial = struct
+  let float_max f f' = if f < f' then f' else f
+
   let calc =
     let n = 31 in
     let up_pow = Array.make (2 * n + 1) 0. in
@@ -21,14 +23,14 @@ module Binomial = struct
       done;
 
       for i = 0 to n do
-        p.(i) <- max (k -. s *. up_pow.(2 * i)) 0.
+        p.(i) <- float_max (k -. s *. up_pow.(2 * i)) 0.
       done;
 
       for j = n - 1 downto 0 do
         let nj = n - j in
         for i = 0 to j do
-          p.(i) <- max (p0 *. p.(i + 1) +. p1 *. p.(i))
-                       (k -. s *. up_pow.(2 * i + nj))
+          p.(i) <- float_max (p0 *. p.(i + 1) +. p1 *. p.(i))
+                             (k -. s *. up_pow.(2 * i + nj))
         done
       done;
 
