@@ -43,20 +43,25 @@ module Binomial = struct
 end
 
 type m128d
-type m128d_array
 module M128d = struct
   module Array = struct
-    type t = m128d_array
+    type t
+    type ptr
+
     let length t = Array.length (Obj.magic t) / 2
-    external unsafe_get : m128d_array -> int -> m128d =
-      "%asm" "movapd	%1, %0" "" ""
-    external unsafe_set : m128d_array -> int -> m128d -> unit =
-      "%asm" "movapd	%2, %1" "" "" ""
+    external int_as_pointer : int -> ptr = "%int_as_pointer"
+    external lsla : ptr -> int -> ptr = "%lsla"
+    external adda : t -> ptr -> ptr = "%adda"
+    let offset t i = adda t (lsla (int_as_pointer i) 3)
+    external unsafe_get : ptr -> m128d = "%asm" "movapd	(%1), %0" "" ""
+    external unsafe_set : ptr -> m128d -> unit = "%asm" "movapd	%2, (%1)" "" "" ""
+    let unsafe_get t i = unsafe_get (offset t i)
+    let unsafe_set t i v = unsafe_set (offset t i) v
     let get t i = unsafe_get t i
     let set t i e = unsafe_set t i e
-    external make : int -> m128d_array = "caml_aligned_array_16_create"
-    external create : int -> m128d_array = "caml_aligned_array_16_create"
-    external free : m128d_array -> unit = "caml_aligned_array_16_free"
+    external make : int -> t = "caml_aligned_array_16_create"
+    external create : int -> t = "caml_aligned_array_16_create"
+    external free : t -> unit = "caml_aligned_array_16_free"
   end
   external ( +.. ) : m128d -> m128d -> m128d    = "%asm" "addpd	%2, %0" "0x" "mmx" ""
   external ( -.. ) : m128d -> m128d -> m128d    = "%asm" "subpd	%2, %0" "0" "mm" ""
@@ -74,20 +79,24 @@ module M128d = struct
 end
 
 type m256d
-type m256d_array
 module M256d = struct
   module Array = struct
-    type t = m256d_array
+    type t
+    type ptr
     let length t = Array.length (Obj.magic t) / 4
-    external unsafe_get : m256d_array -> int -> m256d =
-      "%asm" "vmovapd	%1, %0" "" ""
-    external unsafe_set : m256d_array -> int -> m256d -> unit =
-      "%asm" "vmovapd	%2, %1" "" "" ""
+    external int_as_pointer : int -> ptr = "%int_as_pointer"
+    external lsla : ptr -> int -> ptr = "%lsla"
+    external adda : t -> ptr -> ptr = "%adda"
+    let offset t i = adda t (lsla (int_as_pointer i) 4)
+    external unsafe_get : ptr -> m256d = "%asm" "vmovapd	(%1), %0" "" ""
+    external unsafe_set : ptr -> m256d -> unit = "%asm" "vmovapd	%2, (%1)" "" "" ""
+    let unsafe_get t i = unsafe_get (offset t i)
+    let unsafe_set t i v = unsafe_set (offset t i) v
     let get t i = unsafe_get t i
     let set t i e = unsafe_set t i e
-    external make : int -> m256d_array = "caml_aligned_array_32_create"
-    external create : int -> m256d_array = "caml_aligned_array_32_create"
-    external free : m256d_array -> unit = "caml_aligned_array_32_free"
+    external make : int -> t = "caml_aligned_array_32_create"
+    external create : int -> t = "caml_aligned_array_32_create"
+    external free : t -> unit = "caml_aligned_array_32_free"
   end
   external ( +.. ) : m256d -> m256d -> m256d    = "%asm" "vaddpd	%1, %2, %0" "x" "mmmx" ""
   external ( -.. ) : m256d -> m256d -> m256d    = "%asm" "vsubpd	%1, %2, %0" "" "mmm" ""
@@ -96,17 +105,18 @@ module M256d = struct
   external sqrt : m256d -> m256d            = "%asm" "vsqrtpd	%1, %0" "mmm" ""
   external min : m256d -> m256d -> m256d    = "%asm" "vminpd	%1, %2, %0" "x" "mmmx" ""
   external max : m256d -> m256d -> m256d    = "%asm" "vmaxpd	%1, %2, %0" "x" "mmmx" ""
-  external to_float : m256d -> float = "%asm" "movsd	%1, %0" "mmm" ""
+  external to_float : m256d -> float = "%asm" "" "" ""
   external setzero : unit -> m256d         = "%asm" "vxorpd	%0, %0, %0" "" ""
   external unpackhi : m256d -> m256d -> m256d =
     "%asm" "vunpckhpd	%1, %2, %0" "mmm" "" ""
   external unpacklo : m256d -> m256d -> m256d =
     "%asm" "vunpcklpd	%1, %2, %0" "mmm" "" ""
-  external set : float -> float -> m256d  = "%asm" "vunpcklpd	%1, %2, %0" "mm" "" ""
+  external of_m128 : m128d -> m256d = "%asm" "" "" ""
+  external set : float -> float -> m128d  = "%asm" "vunpcklpd	%1, %2, %0" "mm" "" ""
   let set x y z w =
     let xy = set x y in
     let zw = set z w in
-    unpacklo xy zw
+    unpacklo (of_m128 xy) (of_m128 zw)
   let set1 x = set x x x x
 end
 
@@ -131,25 +141,25 @@ module Binomial_128 = struct
 
       let upp = ref one in
       for i = 0 to n do
-        up_pow.(n - i) <- one /.. !upp;
-        up_pow.(n + i) <- !upp;
+        Array.set up_pow (n - i) (one /.. !upp);
+        Array.set up_pow (n + i) !upp;
         upp := !upp *.. up;
       done;
 
       let zero = setzero () in
       for i = 0 to n do
-        p.(i) <- max (k -.. s *.. up_pow.(2 * i)) zero
+        Array.set p i (max (k -.. s *.. Array.get up_pow (2 * i)) zero)
       done;
 
       for j = n - 1 downto 0 do
         let nj = n - j in
         for i = 0 to j do
-          p.(i) <- max (p0 *.. p.(i + 1) +.. p1 *.. p.(i))
-                       (k -.. s *.. up_pow.(2 * i + nj))
+          Array.set p i (max (p0 *.. Array.get p (i + 1) +.. p1 *.. Array.get p i)
+                         (k -.. s *.. Array.get up_pow (2 * i + nj)))
         done
       done;
 
-      p.(0)
+      Array.get p 0
 
   let bench () =
     let open M128d in
@@ -186,25 +196,25 @@ module Binomial_256 = struct
 
       let upp = ref one in
       for i = 0 to n do
-        up_pow.(n - i) <- one /.. !upp;
-        up_pow.(n + i) <- !upp;
+        Array.set up_pow (n - i) (one /.. !upp);
+        Array.set up_pow (n + i) !upp;
         upp := !upp *.. up;
       done;
 
       let zero = setzero () in
       for i = 0 to n do
-        p.(i) <- max (k -.. s *.. up_pow.(2 * i)) zero
+        Array.set p i (max (k -.. s *.. Array.get up_pow (2 * i)) zero)
       done;
 
       for j = n - 1 downto 0 do
         let nj = n - j in
         for i = 0 to j do
-          p.(i) <- max (p0 *.. p.(i + 1) +.. p1 *.. p.(i))
-                       (k -.. s *.. up_pow.(2 * i + nj))
+          Array.set p i (max (p0 *.. Array.get p (i + 1) +.. p1 *.. Array.get p i)
+                         (k -.. s *.. Array.get up_pow (2 * i + nj)))
         done
       done;
 
-      p.(0)
+      Array.get p 0
 
   let bench () =
     let open M256d in
