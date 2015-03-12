@@ -1,8 +1,8 @@
 (* The benchmark shows 7.8x faster [floor] using hardware primitives. *)
 
-external round_asm : float -> int -> float = "%asm" "roundsd	%1, %0, %2" "x" "i" "=x"
-let floor_asm x = round_asm x 1
-let ceil_asm  x = round_asm x 2
+external round_asm : float -> nativeint -> float = "%asm" "roundsd	%1, %0, %2" "x" "i" "=x"
+let floor_asm x = round_asm x 1n
+let ceil_asm  x = round_asm x 2n
 
 let () =
   let n = 1_000_000 in

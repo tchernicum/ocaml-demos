@@ -117,7 +117,7 @@ external func15 : int -> int -> unit = "%asm" "add	%0, %1
 let () =
   let b = !a in
   func15 5 b;
-  assert (b = 10);
+  assert (b = 10)
 
 external func16 : int -> int -> unit = "%asm" "add	%0, %1
 	dec	%1" "i" "+r" "" "cc"
