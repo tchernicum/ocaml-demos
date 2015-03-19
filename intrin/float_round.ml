@@ -1,12 +1,13 @@
-(* The benchmark shows 7.8x faster [floor] using hardware primitives. *)
+(* The benchmark shows faster [floor] using hardware primitives. *)
 
-external round_asm : float -> nativeint -> float = "%asm" "roundsd	%1, %0, %2" "x" "i" "=x"
-let floor_asm x = round_asm x 1n
-let ceil_asm  x = round_asm x 2n
+external floor_asm : float -> float
+  = "%asm" "floor_stub" "roundsd	$1, %0, %1	# floor" "mx" "=x"
+external ceil_asm : float -> float
+  = "%asm" "ceil_stub" "roundsd	$2, %0, %1	# ceil" "mx" "=x"
 
 let () =
   let n = 1_000_000 in
-  let start = Unix.gettimeofday () in
+  let t0 = Unix.gettimeofday () in
   let x = 1.5 in
   let s0 = ref 0. in
   let s1 = ref 0. in
@@ -26,9 +27,8 @@ let () =
     s6 := floor x;
     s7 := floor x;
   done;
-  let start = start +. (!s0 +. !s1 +. !s2 +. !s3) *. 0. in
-  let t = Unix.gettimeofday () -. start in
-  let start = Unix.gettimeofday () in
+  let t0 = t0 +. (!s0 +. !s1 +. !s2 +. !s3) *. 0. in
+  let t1 = Unix.gettimeofday () in
   let x = 1.5 in
   let s0 = ref 0. in
   let s1 = ref 0. in
@@ -48,5 +48,10 @@ let () =
     s6 := floor_asm x;
     s7 := floor_asm x;
   done;
-  let start = start +. (!s0 +. !s1 +. !s2 +. !s3 +. !s4 +. !s5 +. !s6 +. !s7) *. 0. in
-  Printf.printf "speedup %f\n" (t /. (Unix.gettimeofday () -. start))
+  let t1 = t1 +. (!s0 +. !s1 +. !s2 +. !s3 +. !s4 +. !s5 +. !s6 +. !s7) *. 0. in
+  let t2 = Unix.gettimeofday () in
+  let t2 = t2 -. t1 in
+  let t1 = t1 -. t0 in
+  let ns_mult = 1_000_000_000. /. (8. *. float_of_int n) in
+  Printf.printf "%f ns vs %f ns, speedup %f\n"
+    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2)

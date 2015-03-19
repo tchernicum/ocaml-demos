@@ -7,14 +7,16 @@ external int_as_pointer : int -> ptr = "%int_as_pointer"
 external lsla : ptr -> int -> ptr = "%lsla"
 external adda : string -> ptr -> ptr = "%adda"
 
-external _mm_loadu_si128 : ptr -> m128i = "%asm" "movdqu	(%0), %1" "r" "=x"
+external _mm_loadu_si128 : ptr -> m128i = "%asm" ""
+       "movdqu	(%0), %1" "r" "=x"
 let offset s i = adda s (lsla (int_as_pointer i) 3)
 let _mm_loadu_si128 s i = _mm_loadu_si128 (offset s i)
 
-external _mm_set1_epi64x : int64 -> m128i = "%asm" "movq	%0, %1" "r" "=x"
+external _mm_set1_epi64x : int64 -> m128i = "%asm" ""
+       "movq	%0, %1" "r" "=x"
 
 external _mm_pcmpestri : m128i -> int64 -> m128i -> int64 -> nativeint -> int64 =
-  "%asm" "pcmpestri	%4, %2, %0" "x" "a" "mx" "d" "i" "=c"
+  "%asm" "" "pcmpestri	%4, %2, %0" "x" "a" "mx" "d" "i" "=c"
 
 let rec string_index_rec s l p c =
   let cc = _mm_set1_epi64x (Int64.of_int (Char.code c)) in

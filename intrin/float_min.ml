@@ -1,17 +1,15 @@
-(* The bench shows 9.3 times faster float [min] using hardware primitives. *)
+(* The benchmark shows faster float [min] using hardware primitives. *)
 
-external float_min_asm : float -> float -> float = "%asm" "minsd	%0, %2" "mx" "2" "=x"
+external float_min_asm : float -> float -> float
+  = "%asm" "float_min_asm_stub" "minsd	%0, %2" "mx" "2" "=x"
 
-let is_nan x = (x : float) <> x
-let float_min (x : float) y =
-  if is_nan x || is_nan y then nan
-  else if x < y then x else y
+let float_min (x : float) y = if x < y then x else y
 
 let () =
   let n = 1000 in
   let m = 1000 in
   let a = Array.init m (fun _ -> Random.float 1.) in
-  let start = Unix.gettimeofday () in
+  let t0 = Unix.gettimeofday () in
   let s = ref 0. in
   for i = 1 to n do
     let s0 = ref 0. in
@@ -36,8 +34,7 @@ let () =
     done;
     s := !s +. !s0 +. !s1 +. !s2 +. !s3 +. !s4 +. !s5 +. !s6 +. !s7
   done;
-  let t = Unix.gettimeofday () -. start in
-  let start = Unix.gettimeofday () in
+  let t1 = Unix.gettimeofday () in
   for i = 1 to n do
     let s0 = ref 0. in
     let s1 = ref 0. in
@@ -61,5 +58,10 @@ let () =
     done;
     s := !s +. !s0 +. !s1 +. !s2 +. !s3 +. !s4 +. !s5 +. !s6 +. !s7
   done;
-  let start = start +. !s *. 0. in
-  Printf.printf "speedup %f\n" (t /. (Unix.gettimeofday () -. start))
+  let t1 = t1 +. !s *. 0. in
+  let t2 = Unix.gettimeofday () in
+  let t2 = t2 -. t1 in
+  let t1 = t1 -. t0 in
+  let ns_mult = 1_000_000_000. /. (8. *. float_of_int (n * (m - 2))) in
+  Printf.printf "%f ns vs %f ns, speedup %f\n"
+    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2)

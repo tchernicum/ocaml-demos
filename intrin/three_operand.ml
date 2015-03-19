@@ -2,8 +2,10 @@
    primitives. *)
 
 module Three_operand_float = struct
-  external ( +. ) : float -> float -> float    = "%asm" "vaddps	%0, %1, %2" "x" "xm" "=x"
-  external ( *. ) : float -> float -> float    = "%asm" "vmulps	%0, %1, %2" "x" "xm" "=x"
+  external ( +. ) : float -> float -> float = "%asm" ""
+       "vaddps	%0, %1, %2" "x" "xm64" "=x"
+  external ( *. ) : float -> float -> float = "%asm" ""
+       "vmulps	%0, %1, %2" "x" "xm64" "=x"
 end
 
 let () =
@@ -62,4 +64,6 @@ let () =
   let t2 = Unix.gettimeofday () in
   let t2 = t2 -. t1 in
   let t1 = t1 -. t0 in
-  Printf.printf "speedup %f\n" (t1 /. t2)
+  let ns_mult = 1_000_000_000. /. (float_of_int n) in
+  Printf.printf "%f ns vs %f ns, speedup %f\n"
+    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2)
