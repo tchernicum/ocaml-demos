@@ -1,23 +1,12 @@
 (* The benchmark shows speedup of binomial optional algorithm by vectorizing it *)
 
 module Cpuid = struct
-  external blank_int : unit -> int = "%asm" "" "" "" "=r"
-  external __cpuid : int -> int -> int -> int = "%asm" "cpuid"
-       "sar	$1, %rax	# __cpuid
-	cpuid
-	sal	$1, %rax
-	orq	$1, %rax
-	sal	$1, %rbx
-	orq	$1, %rbx
-	sal	$1, %rcx
-	orq	$1, %rcx
-	sal	$1, %rdx
-	orq	$1, %rdx" "+a" "+b" "+c" "=d"
-  let __cpuid a =
-    let b = blank_int () in
-    let c = blank_int () in
-    let d = __cpuid a b c in
-    a, b, c, d
+  type t = {
+    a : int;
+    b : int;
+    c : int;
+    d : int }
+  external __cpuid : int -> t = "ocaml___cpuid_stub"
 
   (* %ecx *)
   let bit_SSE3        = 1 lsl 0
@@ -337,8 +326,8 @@ end
 let () =
   let supports_avx =
     let open Cpuid in
-    let _, _, c, _ = __cpuid 1 in
-    c land bit_AVX <> 0
+    let cpuid = __cpuid 1 in
+    cpuid.c land bit_AVX <> 0
   in
   let t0 = Unix.gettimeofday () in
   Binomial.bench ();
