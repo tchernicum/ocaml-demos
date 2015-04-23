@@ -83,3 +83,11 @@ let test_ifthenelse m x y =
 let () =
   assert (test_ifthenelse 1 5. 3. = 16.);
   assert (test_ifthenelse 0 5. 3. = 4.)
+
+let () =
+  let x = ref 0L in
+  let y = ref 1L in
+  for i = 1 to 1000 do
+    x := Int64.add !x !y
+  done;
+  assert (!x = 1000L)
