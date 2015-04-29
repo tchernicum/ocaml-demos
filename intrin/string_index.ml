@@ -26,21 +26,30 @@ let string_index s c =
 
 let () =
   let s = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" in
+  let n = 1_000_000 in
   for code = 0x41 to 0x60 do
     let c = Char.chr code in
     let r = string_index s c in
     let r' = try String.index s c with Not_found -> -1 in
-    assert (r = r');
-    let t0 = Unix.gettimeofday () in
-    for i = 1 to 1_000_000 do
-      let _ = string_index s c in ()
-    done;
-    let t1 = Unix.gettimeofday () in
-    for i = 1 to 1_000_000 do
+    assert (r = r')
+  done;
+  let t0 = Unix.gettimeofday () in
+  for code = 0x41 to 0x60 do
+    let c = Char.chr code in
+    for i = 1 to n do
       let _ = try String.index s c with Not_found -> -1 in ()
-    done;
-    let t2 = Unix.gettimeofday () in
-    let t2 = t2 -. t1 in
-    let t1 = t1 -. t0 in
-    Printf.printf "index %2d speedup %f\n%!" r (t2 /. t1)
-  done
+    done
+  done;
+  let t1 = Unix.gettimeofday () in
+  for code = 0x41 to 0x60 do
+    let c = Char.chr code in
+    for i = 1 to n do
+      let _ = string_index s c in ()
+    done
+  done;
+  let t2 = Unix.gettimeofday () in
+  let t2 = t2 -. t1 in
+  let t1 = t1 -. t0 in
+  let ns_mult = 1_000_000_000. /. (float_of_int n) in
+  Printf.printf "%f ns vs %f ns, speedup %f\n"
+    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2)

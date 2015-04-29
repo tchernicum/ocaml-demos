@@ -9,8 +9,10 @@ TARGETS=$(SRC:.ml=.exe)
 
 all: $(TARGETS)
 
-.ml.exe:
-	$(CAMLC) $(COMPFLAGS) ${<:.ml=_stubs.c}
+.c.o:
+	$(CAMLC) $(COMPFLAGS) $<
+
+%.exe: %.ml %_stubs.o
 #	$(CAMLC) -custom $(COMPFLAGS) unix.cma -o ${@:.exe=_bytecode.exe} \
 #	  ${<:.ml=_stubs.o} $<
 	$(CAMLOPT) $(COMPFLAGS) -inline 20 -S unix.cmxa -o $@ ${<:.ml=_stubs.o} $<
