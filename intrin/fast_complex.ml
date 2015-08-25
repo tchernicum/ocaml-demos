@@ -29,6 +29,15 @@ module Complex_asm = struct
     _mm_addsub_pd ac_bd bc_ad
 end
 
+module Complex_c = struct
+  type t = { re : float; im : float }
+
+  let create re im = { re; im }
+  external add : t -> t -> t = "complex_add"
+  external sub : t -> t -> t = "complex_sub"
+  external mul : t -> t -> t = "complex_mul"
+end
+
 let () =
   let n = 1_000_000 in
   let t0 = Unix.gettimeofday () in
@@ -51,8 +60,20 @@ let () =
     ()
   done;
   let t2 = Unix.gettimeofday () in
+  let a = Complex_c.create 1. 2. in
+  let b = Complex_c.create 2. 0.5 in
+  for i = 1 to n do
+    let c = Complex_c.add a b in
+    let d = Complex_c.sub a b in
+    let _ = Complex_c.mul c d in
+    ()
+  done;
+  let t3 = Unix.gettimeofday () in
+  let t3 = t3 -. t2 in
   let t2 = t2 -. t1 in
   let t1 = t1 -. t0 in
   let ns_mult = 1_000_000_000. /. (float_of_int n) in
-  Printf.printf "%f ns vs %f ns, speedup %f\n"
-    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2)
+  Printf.printf "Complex    %6.2f ns vs %6.2f ns, speedup %6.2f\n"
+    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2);
+  Printf.printf "Complex_c  %6.2f ns vs %6.2f ns, speedup %6.2f\n"
+    (t3 *. ns_mult) (t2 *. ns_mult) (t3 /. t2)

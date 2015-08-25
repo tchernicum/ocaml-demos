@@ -1,7 +1,7 @@
-CAMLC=../../ocaml/boot/ocamlrun ../../ocaml/ocamlc
-CAMLOPT=../../ocaml/boot/ocamlrun ../../ocaml/ocamlopt
+CAMLC=ocamlc
+CAMLOPT=ocamlopt
 
-COMPFLAGS=-I ../../ocaml/stdlib -I ../../ocaml/otherlibs/unix -ccopt -O2
+COMPFLAGS=-ccopt '-O2 -msse3'
 SRC=$(wildcard *.ml)
 TARGETS=$(SRC:.ml=.exe)
 
