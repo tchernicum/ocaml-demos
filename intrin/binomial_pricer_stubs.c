@@ -90,3 +90,9 @@ CAMLprim value caml_aligned_array_32_free(value len)
 {
   return caml_aligned_array_free(32, len);
 }
+
+float float_max_stub(float x, float y)
+{
+  asm("maxsd	%0, %1" : "=x" (x) : "x" (y));
+  return x;
+}

@@ -3,8 +3,9 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 
-value float_min_asm_stub(value a_v, value b_v)
+float float_min_stub(float x, float y)
 {
-  CAMLparam2(a_v, b_v);
-  CAMLreturn(caml_copy_double(fmin(Double_val(a_v), Double_val(b_v))));
+  float z;
+  asm("minsd	%2, %0" : "=x" (z) : "0" (x), "xm" (y));
+  return z;
 }

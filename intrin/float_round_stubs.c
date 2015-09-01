@@ -1,16 +1,17 @@
+#include <immintrin.h>
 #include <math.h>
 #include <caml/alloc.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 
-value floor_stub(value v)
+double floor_stub(double v)
 {
-  CAMLparam1(v);
-  CAMLreturn(caml_copy_double(floor(Double_val(v))));
+  asm("roundsd	$1, %0, %0" : "=x" (v));
+  return v;
 }
 
-value ceil_stub(value v)
+double ceil_stub(double v)
 {
-  CAMLparam1(v);
-  CAMLreturn(caml_copy_double(ceil(Double_val(v))));
+  asm("roundsd	$2, %0, %0" : "=x" (v));
+  return ceil(v);
 }

@@ -10,7 +10,7 @@ module Complex_asm = struct
        "mulpd	%1, %2	# _mm_mul_pd" "%2" "xm128" "=x"
   external _mm_div_pd : m128d -> m128d -> m128d = "%asm" ""
        "divpd	%1, %2	# _mm_div_pd" "2" "xm128" "=x"
-  external _mm_shuffle_pd : m128d -> m128d -> int -> m128d = "%asm" ""
+  external _mm_shuffle_pd : m128d -> m128d -> nativeint -> m128d = "%asm" ""
        "shufpd	%2, %1, %3	# _mm_shuffle_pd" "3" "xm128" "i" "=x"
   external _mm_addsub_pd : m128d -> m128d -> m128d = "%asm" ""
        "addsubpd	%1, %2	# _mm_addsub_pd" "2" "xm128" "=x"
@@ -26,7 +26,7 @@ module Complex_asm = struct
   let sub x y = _mm_sub_pd x y
   let mul ab cd =
     let ac_bd = _mm_mul_pd ab cd in
-    let ba = _mm_shuffle_pd ab ab 1 in
+    let ba = _mm_shuffle_pd ab ab 1n in
     let bc_ad = _mm_mul_pd ba cd in
     _mm_addsub_pd ac_bd bc_ad
   let norm2 x =
@@ -35,9 +35,19 @@ module Complex_asm = struct
   let zero = create 0. 0.
 end
 
-open Complex_asm
-
 let rec mandelbrot x y =
+  let open Complex in
+  let c = { re = x; im = y } in
+  let z = ref zero in
+  let i = ref 0 in
+  while !i <= 63 && norm2 !z > 4. do
+    incr i;
+    z := add (mul !z !z) c
+  done;
+  !i
+
+let rec mandelbrot_asm x y =
+  let open Complex_asm in
   let c = create x y in
   let z = ref (create 0. 0.) in
   let i = ref 0 in
@@ -59,10 +69,28 @@ let display () =
     done;
   done
 
+let display_asm () =
+  let w, h = 640, 640 in
+  let w_inv = 1. /. float w in
+  let h_inv = 1. /. float h in
+  for a = 0 to w - 1 do
+    for b = 0 to h - 1 do
+      let x = 4. *. float a *. w_inv -. 2. in
+      let y = 4. *. float b *. h_inv -. 2. in
+      let _ = mandelbrot_asm x y in ()
+    done;
+  done
+
 let () =
   let t0 = Unix.gettimeofday () in
-  for i = 0 to 99 do
+  for i = 1 to 200 do
     display ()
   done;
   let t1 = Unix.gettimeofday () in
-  Printf.printf "%f\n%!" (t1 -. t0)
+  for i = 1 to 200 do
+    display_asm ()
+  done;
+  let t2 = Unix.gettimeofday () in
+  let t2 = t2 -. t1 in
+  let t1 = t1 -. t0 in
+  Printf.printf "Complex   %6.2f s vs %6.2f s, speedup %6.2f\n" t1 t2 (t1 /. t2)

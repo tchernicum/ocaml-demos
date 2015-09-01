@@ -13,6 +13,9 @@ external _mm_set1_epi64x : int64 -> m128i = "%asm" ""
 external _mm_pcmpestri : m128i -> int64 -> m128i -> int64 -> nativeint -> int64 =
   "%asm" "" "pcmpestri	%4, %2, %0" "x" "a" "mx" "d" "i" "=c"
 
+
+external string_index_c : string -> char -> int = "string_index_stub" "noalloc"
+
 let rec string_index_rec s l p c =
   let cc = _mm_set1_epi64x (Int64.of_int (Char.code c)) in
   let a = _mm_loadu_si128 (index s p) in
@@ -48,8 +51,18 @@ let () =
     done
   done;
   let t2 = Unix.gettimeofday () in
+  for code = 0x41 to 0x60 do
+    let c = Char.chr code in
+    for i = 1 to n do
+      let _ = string_index_c s c in ()
+    done
+  done;
+  let t3 = Unix.gettimeofday () in
+  let t3 = t3 -. t2 in
   let t2 = t2 -. t1 in
   let t1 = t1 -. t0 in
   let ns_mult = 1_000_000_000. /. (float_of_int n) in
-  Printf.printf "%f ns vs %f ns, speedup %f\n"
-    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2)
+  Printf.printf "String.index   %7.2f ns vs %7.2f ns, speedup %7.2f\n"
+    (t1 *. ns_mult) (t2 *. ns_mult) (t1 /. t2);
+  Printf.printf "string_index_c %7.2f ns vs %7.2f ns, speedup %7.2f\n"
+    (t3 *. ns_mult) (t2 *. ns_mult) (t3 /. t2)
