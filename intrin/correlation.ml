@@ -29,36 +29,44 @@ let correlation_matrix_opt ~n ~stride xs c =
     let c2 = Array.unsafe_get xs (stride * 2 + !i + 2) in
     let c3 = Array.unsafe_get xs (stride * 3 + !i + 2) in
     let sti = !i * stride_vec in
-    for j = 0 to (!i + 2) / 1 do
-      let st0 = stride_vec * 0 + j in
-      let i0 = sti + st0 in
-      let st1 = stride_vec * 1 + j in
-      let i1 = sti + st1 in
-      let st2 = stride_vec * 2 + j in
-      let i2 = sti + st2 in
-      let st3 = stride_vec * 3 + j in
-      let s0 = Array.unsafe_get c i0 in
-      let s1 = Array.unsafe_get c i1 in
-      let s2 = Array.unsafe_get c i2 in
-      let xj = Array.unsafe_get xs st0 in
+    let j_end = (!i + 2) / 1 in
+    let i0 = ref (sti + stride_vec * 0) in
+    let i1 = ref (sti + stride_vec * 1) in
+    let i2 = ref (sti + stride_vec * 2) in
+    let st0 = ref (stride_vec * 0) in
+    let st1 = ref (stride_vec * 1) in
+    let st2 = ref (stride_vec * 2) in
+    let st3 = ref (stride_vec * 3) in
+    while !st0 <= j_end do
+      let s0 = Array.unsafe_get c !i0 in
+      let s1 = Array.unsafe_get c !i1 in
+      let s2 = Array.unsafe_get c !i2 in
+      let xj = Array.unsafe_get xs !st0 in
+      st0 := !st0 + 1;
       let s0 = s0 +. a0 *. xj in
       let s1 = s1 +. b0 *. xj in
       let s2 = s2 +. c0 *. xj in
-      let xj = Array.unsafe_get xs st1 in
+      let xj = Array.unsafe_get xs !st1 in
+      st1 := !st1 + 1;
       let s0 = s0 +. a1 *. xj in
       let s1 = s1 +. b1 *. xj in
       let s2 = s2 +. c1 *. xj in
-      let xj = Array.unsafe_get xs st2 in
+      let xj = Array.unsafe_get xs !st2 in
+      st2 := !st2 + 1;
       let s0 = s0 +. a2 *. xj in
       let s1 = s1 +. b2 *. xj in
       let s2 = s2 +. c2 *. xj in
-      let xj = Array.unsafe_get xs st3 in
+      let xj = Array.unsafe_get xs !st3 in
+      st3 := !st3 + 1;
       let s0 = s0 +. a3 *. xj in
       let s1 = s1 +. b3 *. xj in
       let s2 = s2 +. c3 *. xj in
-      Array.unsafe_set c i0 s0;
-      Array.unsafe_set c i1 s1;
-      Array.unsafe_set c i2 s2
+      Array.unsafe_set c !i0 s0;
+      i0 := !i0 + 1;
+      Array.unsafe_set c !i1 s1;
+      i1 := !i1 + 1;
+      Array.unsafe_set c !i2 s2;
+      i2 := !i2 + 1;
     done;
     i := !i + 3
   done
@@ -95,36 +103,44 @@ let correlation_matrix_sse ~n ~stride xs c =
     let sti = !i * stride_vec in
     let ( +. ) = _mm_add_pd in
     let ( *. ) = _mm_mul_pd in
-    for j = 0 to (!i + 2) / 2 do
-      let st0 = stride_vec * 0 + j in
-      let i0 = sti + st0 in
-      let st1 = stride_vec * 1 + j in
-      let i1 = sti + st1 in
-      let st2 = stride_vec * 2 + j in
-      let i2 = sti + st2 in
-      let st3 = stride_vec * 3 + j in
-      let s0 = _mm_loadu_pd c i0 in
-      let s1 = _mm_loadu_pd c i1 in
-      let s2 = _mm_loadu_pd c i2 in
-      let xj = _mm_loadu_pd xs st0 in
+    let j_end = (!i + 2) / 2 in
+    let i0 = ref (sti + stride_vec * 0) in
+    let i1 = ref (sti + stride_vec * 1) in
+    let i2 = ref (sti + stride_vec * 2) in
+    let st0 = ref (stride_vec * 0) in
+    let st1 = ref (stride_vec * 1) in
+    let st2 = ref (stride_vec * 2) in
+    let st3 = ref (stride_vec * 3) in
+    while !st0 <= j_end do
+      let s0 = _mm_loadu_pd c !i0 in
+      let s1 = _mm_loadu_pd c !i1 in
+      let s2 = _mm_loadu_pd c !i2 in
+      let xj = _mm_loadu_pd xs !st0 in
+      st0 := !st0 + 1;
       let s0 = s0 +. a0 *. xj in
       let s1 = s1 +. b0 *. xj in
       let s2 = s2 +. c0 *. xj in
-      let xj = _mm_loadu_pd xs st1 in
+      let xj = _mm_loadu_pd xs !st1 in
+      st1 := !st1 + 1;
       let s0 = s0 +. a1 *. xj in
       let s1 = s1 +. b1 *. xj in
       let s2 = s2 +. c1 *. xj in
-      let xj = _mm_loadu_pd xs st2 in
+      let xj = _mm_loadu_pd xs !st2 in
+      st2 := !st2 + 1;
       let s0 = s0 +. a2 *. xj in
       let s1 = s1 +. b2 *. xj in
       let s2 = s2 +. c2 *. xj in
-      let xj = _mm_loadu_pd xs st3 in
+      let xj = _mm_loadu_pd xs !st3 in
+      st3 := !st3 + 1;
       let s0 = s0 +. a3 *. xj in
       let s1 = s1 +. b3 *. xj in
       let s2 = s2 +. c3 *. xj in
-      _mm_storeu_pd c i0 s0;
-      _mm_storeu_pd c i1 s1;
-      _mm_storeu_pd c i2 s2
+      _mm_storeu_pd c !i0 s0;
+      i0 := !i0 + 1;
+      _mm_storeu_pd c !i1 s1;
+      i1 := !i1 + 1;
+      _mm_storeu_pd c !i2 s2;
+      i2 := !i2 + 1;
     done;
     i := !i + 3
   done
@@ -162,37 +178,44 @@ let correlation_matrix_avx ~n ~stride xs c =
     let sti = !i * stride_vec in
     let ( +. ) = _mm256_add_pd in
     let ( *. ) = _mm256_mul_pd in
-    for j = 0 to (!i + 2) / 4 do
-      let j2 = j * 2 in
-      let st0 = stride_vec * 0 + j2 in
-      let i0 = sti + st0 in
-      let st1 = stride_vec * 1 + j2 in
-      let i1 = sti + st1 in
-      let st2 = stride_vec * 2 + j2 in
-      let i2 = sti + st2 in
-      let st3 = stride_vec * 3 + j2 in
-      let s0 = _mm256_loadu_pd c i0 in
-      let s1 = _mm256_loadu_pd c i1 in
-      let s2 = _mm256_loadu_pd c i2 in
-      let xj = _mm256_loadu_pd xs st0 in
+    let j_end = (!i + 2) / 4 * 2 in
+    let i0 = ref (sti + stride_vec * 0) in
+    let i1 = ref (sti + stride_vec * 1) in
+    let i2 = ref (sti + stride_vec * 2) in
+    let st0 = ref (stride_vec * 0) in
+    let st1 = ref (stride_vec * 1) in
+    let st2 = ref (stride_vec * 2) in
+    let st3 = ref (stride_vec * 3) in
+    while !st0 <= j_end do
+      let s0 = _mm256_loadu_pd c !i0 in
+      let s1 = _mm256_loadu_pd c !i1 in
+      let s2 = _mm256_loadu_pd c !i2 in
+      let xj = _mm256_loadu_pd xs !st0 in
+      st0 := !st0 + 2;
       let s0 = s0 +. a0 *. xj in
       let s1 = s1 +. b0 *. xj in
       let s2 = s2 +. c0 *. xj in
-      let xj = _mm256_loadu_pd xs st1 in
+      let xj = _mm256_loadu_pd xs !st1 in
+      st1 := !st1 + 2;
       let s0 = s0 +. a1 *. xj in
       let s1 = s1 +. b1 *. xj in
       let s2 = s2 +. c1 *. xj in
-      let xj = _mm256_loadu_pd xs st2 in
+      let xj = _mm256_loadu_pd xs !st2 in
+      st2 := !st2 + 2;
       let s0 = s0 +. a2 *. xj in
       let s1 = s1 +. b2 *. xj in
       let s2 = s2 +. c2 *. xj in
-      let xj = _mm256_loadu_pd xs st3 in
+      let xj = _mm256_loadu_pd xs !st3 in
+      st3 := !st3 + 2;
       let s0 = s0 +. a3 *. xj in
       let s1 = s1 +. b3 *. xj in
       let s2 = s2 +. c3 *. xj in
-      _mm256_storeu_pd c i0 s0;
-      _mm256_storeu_pd c i1 s1;
-      _mm256_storeu_pd c i2 s2
+      _mm256_storeu_pd c !i0 s0;
+      i0 := !i0 + 2;
+      _mm256_storeu_pd c !i1 s1;
+      i1 := !i1 + 2;
+      _mm256_storeu_pd c !i2 s2;
+      i2 := !i2 + 2;
     done;
     i := !i + 3
   done
@@ -201,7 +224,7 @@ let () =
   let n = 256 in
   let stride = (n + 11) / 12 * 12 in
   let samples = 4 in
-  let iters = 1024 * 16 in
+  let iters = 1024 * 4 in
   let c = Array.make (stride * stride) 0. in
   let xs = Array.init (stride * samples) (fun _ -> Random.float 2. -. 1.) in
   let c0 = Array.make (stride * stride) 0. in
