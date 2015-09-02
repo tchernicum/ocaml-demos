@@ -1,18 +1,18 @@
-let correlation_matrix ~n ~samples ~stride xs c =
-  for s = 0 to samples - 1 do
+let correlation_matrix_dumb ~n ~stride xs c =
+  for s = 0 to 3 do
     let s = s * stride in
     for i = 0 to n - 1 do
-      let i_n = i * n in
+      let i_stride = i * stride in
       let x = Array.unsafe_get xs (s + i) in
-      for j = 0 to i do
+      for j = 0 to n - 1 do
         let y = Array.unsafe_get xs (s + j) in
-        let i_n_j = i_n + j in
+        let i_n_j = i_stride + j in
         Array.unsafe_set c i_n_j (Array.unsafe_get c i_n_j +. x *. y)
       done
     done
   done
 
-let correlation_matrix_opt ~n ~stride ~samples xs c =
+let correlation_matrix_opt ~n ~stride xs c =
   let stride_vec = stride / 1 in
   let i = ref 0 in
   while !i < n do
@@ -29,7 +29,7 @@ let correlation_matrix_opt ~n ~stride ~samples xs c =
     let c2 = Array.unsafe_get xs (stride * 2 + !i + 2) in
     let c3 = Array.unsafe_get xs (stride * 3 + !i + 2) in
     let sti = !i * stride_vec in
-    for j = 0 to (!i + 1) / 1 do
+    for j = 0 to (!i + 2) / 1 do
       let st0 = stride_vec * 0 + j in
       let i0 = sti + st0 in
       let st1 = stride_vec * 1 + j in
@@ -71,22 +71,12 @@ external _mm_storeu_pd : float array -> int -> m128d -> unit = "%asm" ""
      "movupd	%2, -8(%0,%1,8)	# _mm_storeu_pd" "r" "r" "x" "r"
 external _mm_add_pd : m128d -> m128d -> m128d = "%asm" ""
      "addpd	%1, %2	# _mm_add_pd" "%2" "xm128" "=x"
-external _mm_sub_pd : m128d -> m128d -> m128d = "%asm" ""
-     "subpd	%1, %2	# _mm_sub_pd" "2" "xm128" "=x"
 external _mm_mul_pd : m128d -> m128d -> m128d = "%asm" ""
      "mulpd	%1, %2	# _mm_mul_pd" "%2" "xm128" "=x"
-external _mm_div_pd : m128d -> m128d -> m128d = "%asm" ""
-     "divpd	%1, %2	# _mm_div_pd" "2" "xm128" "=x"
-external _mm_shuffle_pd : m128d -> m128d -> int -> m128d = "%asm" ""
-     "shufpd	%2, %1, %3	# _mm_shuffle_pd" "3" "xm128" "i" "=x"
-external _mm_addsub_pd : m128d -> m128d -> m128d = "%asm" ""
-     "addsubpd	%1, %2	# _mm_addsub_pd" "2" "xm128" "=x"
-external _mm_set_pd : float -> float -> m128d = "%asm" ""
-     "unpcklpd	%1, %2	# _mm_set_pd" "2" "xm128" "=x"
 external _mm_set1_pd : float -> m128d = "%asm" ""
      "unpcklpd	%1, %1	# _mm_set1_pd" "1" "=x"
 
-let correlation_matrix_sse ~n ~stride ~samples xs c =
+let correlation_matrix_sse ~n ~stride xs c =
   let stride_vec = stride / 2 in
   let i = ref 0 in
   while !i < n do
@@ -139,41 +129,116 @@ let correlation_matrix_sse ~n ~stride ~samples xs c =
     i := !i + 3
   done
 
+type m256d
+
+external _mm256_loadu_pd : float array -> int -> m256d = "%asm" ""
+     "vmovupd	-8(%0,%1,8), %2	# _mm256_loadu_pd" "r" "r" "=x"
+external _mm256_storeu_pd : float array -> int -> m256d -> unit = "%asm" ""
+     "vmovupd	%2, -8(%0,%1,8)	# _mm256_storeu_pd" "r" "r" "x" "r"
+external _mm256_add_pd : m256d -> m256d -> m256d = "%asm" ""
+     "vaddpd	%1, %0, %2	# _mm256_add_pd" "%x" "xm256" "=x"
+external _mm256_mul_pd : m256d -> m256d -> m256d = "%asm" ""
+     "vmulpd	%1, %0, %2	# _mm256_mul_pd" "%x" "xm256" "=x"
+external _mm256_set1_pd : float -> m256d = "%asm" ""
+     "vmovddup	%x0, %x1	# _mm256_set1_pd
+	vinsertf128	$1, %x1, %1, %1" "xm64" "=x"
+
+let correlation_matrix_avx ~n ~stride xs c =
+  let stride_vec = stride / 4 * 2 in
+  let i = ref 0 in
+  while !i < n do
+    let a0 = _mm256_set1_pd (Array.unsafe_get xs (stride * 0 + !i + 0)) in
+    let a1 = _mm256_set1_pd (Array.unsafe_get xs (stride * 1 + !i + 0)) in
+    let a2 = _mm256_set1_pd (Array.unsafe_get xs (stride * 2 + !i + 0)) in
+    let a3 = _mm256_set1_pd (Array.unsafe_get xs (stride * 3 + !i + 0)) in
+    let b0 = _mm256_set1_pd (Array.unsafe_get xs (stride * 0 + !i + 1)) in
+    let b1 = _mm256_set1_pd (Array.unsafe_get xs (stride * 1 + !i + 1)) in
+    let b2 = _mm256_set1_pd (Array.unsafe_get xs (stride * 2 + !i + 1)) in
+    let b3 = _mm256_set1_pd (Array.unsafe_get xs (stride * 3 + !i + 1)) in
+    let c0 = _mm256_set1_pd (Array.unsafe_get xs (stride * 0 + !i + 2)) in
+    let c1 = _mm256_set1_pd (Array.unsafe_get xs (stride * 1 + !i + 2)) in
+    let c2 = _mm256_set1_pd (Array.unsafe_get xs (stride * 2 + !i + 2)) in
+    let c3 = _mm256_set1_pd (Array.unsafe_get xs (stride * 3 + !i + 2)) in
+    let sti = !i * stride_vec in
+    let ( +. ) = _mm256_add_pd in
+    let ( *. ) = _mm256_mul_pd in
+    for j = 0 to (!i + 2) / 4 do
+      let j2 = j * 2 in
+      let st0 = stride_vec * 0 + j2 in
+      let i0 = sti + st0 in
+      let st1 = stride_vec * 1 + j2 in
+      let i1 = sti + st1 in
+      let st2 = stride_vec * 2 + j2 in
+      let i2 = sti + st2 in
+      let st3 = stride_vec * 3 + j2 in
+      let s0 = _mm256_loadu_pd c i0 in
+      let s1 = _mm256_loadu_pd c i1 in
+      let s2 = _mm256_loadu_pd c i2 in
+      let xj = _mm256_loadu_pd xs st0 in
+      let s0 = s0 +. a0 *. xj in
+      let s1 = s1 +. b0 *. xj in
+      let s2 = s2 +. c0 *. xj in
+      let xj = _mm256_loadu_pd xs st1 in
+      let s0 = s0 +. a1 *. xj in
+      let s1 = s1 +. b1 *. xj in
+      let s2 = s2 +. c1 *. xj in
+      let xj = _mm256_loadu_pd xs st2 in
+      let s0 = s0 +. a2 *. xj in
+      let s1 = s1 +. b2 *. xj in
+      let s2 = s2 +. c2 *. xj in
+      let xj = _mm256_loadu_pd xs st3 in
+      let s0 = s0 +. a3 *. xj in
+      let s1 = s1 +. b3 *. xj in
+      let s2 = s2 +. c3 *. xj in
+      _mm256_storeu_pd c i0 s0;
+      _mm256_storeu_pd c i1 s1;
+      _mm256_storeu_pd c i2 s2
+    done;
+    i := !i + 3
+  done
+
 let () =
   let n = 256 in
-  let stride = (n + 2) / 3 * 3 in
+  let stride = (n + 11) / 12 * 12 in
   let samples = 4 in
-  let iters = 1024 in
-  let c = Array.make (n * stride) 0. in
+  let iters = 1024 * 16 in
+  let c = Array.make (stride * stride) 0. in
   let xs = Array.init (stride * samples) (fun _ -> Random.float 2. -. 1.) in
-  let c0 = Array.make (n * stride) 0. in
-  let c1 = Array.make (n * stride) 0. in
-  let c2 = Array.make (n * stride) 0. in
-  correlation_matrix     ~n ~samples ~stride xs c0;
-  correlation_matrix_opt ~n ~samples ~stride xs c1;
-  correlation_matrix_sse ~n ~samples ~stride xs c2;
+  let c0 = Array.make (stride * stride) 0. in
+  let c1 = Array.make (stride * stride) 0. in
+  let c2 = Array.make (stride * stride) 0. in
+  let c3 = Array.make (stride * stride) 0. in
+  correlation_matrix_dumb ~n ~stride xs c0;
+  correlation_matrix_opt  ~n ~stride xs c1;
+  correlation_matrix_sse  ~n ~stride xs c2;
+  correlation_matrix_avx  ~n ~stride xs c3;
   for i = 0 to n - 1 do
     for j = 0 to i do
-      let x0 = c2.(i * stride + j) in
+      let x0 = c0.(i * stride + j) in
       let x1 = c1.(i * stride + j) in
-      Printf.printf "%f %f\n%!" x0 x1;
+      let x2 = c2.(i * stride + j) in
+      let x3 = c3.(i * stride + j) in
       assert (x0 = x1);
+      assert (x0 = x2);
+      assert (x0 = x3);
     done
   done;
   let t0 = Unix.gettimeofday () in
   for i = 0 to iters - 1 do
-    correlation_matrix ~n ~samples ~stride xs c;
+    correlation_matrix_opt ~n ~stride xs c;
   done;
   let t1 = Unix.gettimeofday () in
   for i = 0 to iters - 1 do
-    correlation_matrix_opt ~n ~stride ~samples xs c;
+    correlation_matrix_sse ~n ~stride xs c;
   done;
   let t2 = Unix.gettimeofday () in
   for i = 0 to iters - 1 do
-    correlation_matrix_sse ~n ~stride ~samples xs c;
+    correlation_matrix_avx ~n ~stride xs c;
   done;
   let t3 = Unix.gettimeofday () in
   let t3 = t3 -. t2 in
   let t2 = t2 -. t1 in
   let t1 = t1 -. t0 in
-  Printf.printf "%f %f %f\n%!" t1 t2 t3
+  Printf.printf "Scalar: %f s\n" t1;
+  Printf.printf "SSE   : %f s\n" t2;
+  Printf.printf "AVX   : %f s\n" t3

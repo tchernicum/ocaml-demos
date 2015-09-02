@@ -1,7 +1,7 @@
 CAMLC=ocamlc
 CAMLOPT=ocamlopt
 
-COMPFLAGS=-ccopt '-O2 -msse3 -msse4.1 -msse4.2'
+COMPFLAGS=-ccopt '-O2 -msse3 -msse4.1 -msse4.2 -mavx'
 SRC=$(wildcard *.ml)
 TARGETS=$(SRC:.ml=.exe)
 

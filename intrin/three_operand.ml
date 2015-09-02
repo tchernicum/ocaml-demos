@@ -9,10 +9,10 @@ module Two_operand_float = struct
 end
 
 module Three_operand_float = struct
-  external ( +. ) : float -> float -> float = "%asm" "" "vaddsd	%1, %0, %2" "%x" "xm64" "=x"
-  external ( -. ) : float -> float -> float = "%asm" "" "vsubsd	%1, %0, %2"  "x" "xm64" "=x"
-  external ( *. ) : float -> float -> float = "%asm" "" "vmulsd	%1, %0, %2" "%x" "xm64" "=x"
-  external ( /. ) : float -> float -> float = "%asm" "" "vdivsd	%1, %0, %2"  "x" "xm64" "=x"
+  external ( +. ) : float -> float -> float = "%asm" "" "vaddsd	%1, %0, %2" "%x" "xm256" "=x"
+  external ( -. ) : float -> float -> float = "%asm" "" "vsubsd	%1, %0, %2"  "x" "xm256" "=x"
+  external ( *. ) : float -> float -> float = "%asm" "" "vmulsd	%1, %0, %2" "%x" "xm256" "=x"
+  external ( /. ) : float -> float -> float = "%asm" "" "vdivsd	%1, %0, %2"  "x" "xm256" "=x"
 end
 
 let () =
